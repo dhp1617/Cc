@@ -1,429 +1,335 @@
----
+###ml
+x=np.c_[np.ones(X.shape[0]),X]
+B = np.linalg.inv(X.T @ X)@X.T@Y
 
-# Exp:1 Design and Configure a Custom Mode VPC with Multi-Region Subnets --->>>
 
-## Steps
 
-### Step 1 - Open the Google Cloud Console
+####logstic 
 
-1. Go to https://console.cloud.google.com
-2. Select your project from the project dropdown.
 
-### Step 2 - Navigate to VPC Networks
 
-1. Click Navigation Menu, go to Networking, then VPC network, then VPC networks.
+df = pd.read_csv('data.csv')
 
-### Step 3 - Create a New VPC Network
+df.fillna(df.mean(numeric_only=True), inplace=True)
 
-1. Click Create VPC Network.
-2. Name: custom-vpc-network
-3. Subnet creation mode: select Custom.
+le = LabelEncoder()
+for col in df.select_dtypes(include='object'):
+    df[col] = le.fit_transform(df[col])
 
-### Step 4 - Add Subnet in us-central1
+X = df[['X1','X2']].values   
+Y = df['Y'].values
 
-1. Under New subnet, fill in:
-   - Name: subnet-us-central1
-   - Region: us-central1
-   - IP address range: 10.0.1.0/24
-2. Click Done.
+X = np.c_[np.ones(len(X)), X]
 
-### Step 5 - Add Subnet in asia-east1
+def sigmoid(z):
+    return 1 / (1 + np.exp(-z))
 
-1. Click Add subnet.
-2. Fill in:
-   - Name: subnet-asia-east1
-   - Region: asia-east1
-   - IP address range: 10.0.2.0/24
-3. Click Done.
+m = len(Y)
+theta = np.zeros(X.shape[1])
 
-### Step 6 - Create the VPC Network
+learning_rate = 0.1
+iterations = 1000
+cost_history = []
 
-1. Click Create.
+for i in range(iterations):
+    
+    z = X @ theta
+    h = sigmoid(z)
+    
+    
+    gradient = (X.T @ (h - Y)) / m
+    
+    theta -= learning_rate * gradient
+    
+    cost = (-Y*np.log(h) - (1-Y)*np.log(1-h)).mean()
+    cost_history.append(cost)
 
-### Step 7 - Verify
+print("Theta:", theta)
 
-1. Click on the VPC network, then Subnets tab.
-2. Confirm both subnets appear with correct regions and IP ranges.
+plt.plot(range(iterations), cost_history)
+plt.xlabel("Iterations")
+plt.ylabel("Cost")
+plt.show()
 
----
+pred = sigmoid(X @ theta) >= 0.5
+accuracy = (pred == Y).mean()
+print("Accuracy:", accuracy)
 
-# Exp:2 Launch a Compute Engine VM Without External IP and Enable Private Google Access --->>>
+####slp
 
-## Steps
 
-### Step 1 - Enable Private Google Access on the Subnet
 
-1. Go to Networking, then VPC network, then VPC networks.
-2. Click on your VPC, then the Subnets tab.
-3. Click on subnet-us-central1, then Edit.
-4. Set Private Google Access to On.
-5. Click Save.
+df = pd.read_csv('data.csv')
 
-### Step 2 - Create a VM Instance
+df.fillna(df.mean(numeric_only=True), inplace=True)
 
-1. Go to Compute Engine, then VM instances.
-2. Click Create Instance.
-3. Name: vm-no-external-ip
-4. Region: us-central1, Zone: us-central1-a
-5. Series: E2, Machine type: e2-micro
-6. Boot disk: Debian GNU/Linux (latest)
+le = LabelEncoder()
+for col in df.select_dtypes(include='object'):
+    df[col] = le.fit_transform(df[col])
 
-### Step 3 - Remove External IP
+X = df[['X1','X2']].values   
+Y = df['Y'].values           
 
-1. Expand Advanced options, then Networking.
-2. Click on the default network interface.
-3. Set Network to your custom VPC.
-4. Set Subnetwork to subnet-us-central1.
-5. Set External IPv4 address to None.
-6. Click Done.
+scaler = StandardScaler()
+X = scaler.fit_transform(X)
 
-### Step 4 - Create and Verify
+X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.2)
 
-1. Click Create.
-2. On the VM instances page, confirm External IP shows None for your VM.
+lr = 0.1
+iterations = 1000
 
----
+weights = np.zeros(X_train.shape[1])
+bias = 0
 
-# Exp:3 Create a Cloud Storage Bucket, Upload Objects, and Configure Lifecycle Rules --->>>
+errors = []
 
-## Steps
+def activation(z):
+    return np.where(z >= 0, 1, 0)
 
-### Step 1 - Create a Bucket
+for i in range(iterations):
+    
+    z = X_train @ weights + bias
+    y_pred = activation(z)
+    
+    error = Y_train - y_pred
+    errors.append(np.mean(np.abs(error)))
+    
+    weights += lr * (X_train.T @ error) / len(Y_train)
+    bias += lr * error.mean()
 
-1. Go to Cloud Storage, then Buckets.
-2. Click Create bucket.
-3. Enter a unique name, for example: my-storage-bucket-2024-lab
-4. Location type: Region, select us-central1.
-5. Default storage class: Standard.
-6. Access control: Uniform.
-7. Click Create.
 
-### Step 2 - Upload Objects
 
-1. Click on the bucket name.
-2. Click Upload files, select files from your computer, click Open.
+z_test = X_test @ weights + bias
+Y_pred = activation(z_test)
 
-### Step 3 - Add a Lifecycle Rule
 
-1. Click the Lifecycle tab inside the bucket.
-2. Click Add a rule.
-3. Action: Set storage class to Nearline, click Continue.
-4. Condition: Age, enter 30, click Continue.
-5. Click Create.
 
-### Step 4 - Verify
 
-1. Confirm the rule appears in the Lifecycle tab showing Nearline after 30 days.
+#####MLP 
 
----
+import torch
+import torch.nn as nn
+import torch.optim as optim
 
-# Exp:4 Deploy a Managed Cloud SQL MySQL Instance --->>>
+data = load_iris()
+X = data.data
+Y = data.target
 
-## Steps
+scaler = StandardScaler()
+X = scaler.fit_transform(X)
 
-### Step 1 - Create a Cloud SQL Instance
+X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.2, random_state=0)
 
-1. Go to Navigation Menu, then Databases, then SQL.
-2. Click Create instance, select MySQL, click Next.
-3. Instance ID: mysql-instance-lab
-4. Set a root password.
-5. Database version: MySQL 8.0.
+X_train = torch.tensor(X_train, dtype=torch.float32)
+X_test  = torch.tensor(X_test, dtype=torch.float32)
+Y_train = torch.tensor(Y_train, dtype=torch.long)
+Y_test  = torch.tensor(Y_test, dtype=torch.long)
 
-### Step 2 - Configure Edition and Region
+model = nn.Sequential(
+    nn.Linear(4, 10),
+    nn.ReLU(),
+    nn.Linear(10, 3)
+)
 
-1. Cloud SQL edition: Enterprise.
-2. Preset: Sandbox (for testing).
-3. Region: us-central1.
-4. Zonal availability: Single zone (testing) or Multiple zones (production).
+criterion = nn.CrossEntropyLoss()
+optimizer = optim.Adam(model.parameters(), lr=0.01)
 
-### Step 3 - Configure Machine and Storage
+epochs = 100
+losses = []
 
-1. Machine type: Lightweight (1 vCPU, 3.75 GB RAM).
-2. Storage type: SSD.
-3. Storage capacity: 10 GB.
-4. Enable automatic storage increases.
+for i in range(epochs):
+    optimizer.zero_grad()
+    
+    outputs = model(X_train)
+    loss = criterion(outputs, Y_train)
+    
+    loss.backward()
+    optimizer.step()
+    
+    losses.append(loss.item())
 
-### Step 4 - Configure Connections
+plt.plot(losses)
+plt.xlabel("Epochs")
+plt.ylabel("Loss")
+plt.show()
 
-1. Enable Private IP and select your VPC network.
-2. If prompted, enable the Service Networking API.
+with torch.no_grad():
+    outputs = model(X_test)
+    _, preds = torch.max(outputs, 1)
 
-### Step 5 - Configure Backups
+y_true = Y_test.numpy()
+y_pred = preds.numpy()
 
-1. Enable automated backups.
-2. Set backup window to a low-traffic period.
-3. Retention: 7 days.
-4. Enable point-in-time recovery.
+####aggloro
 
-### Step 6 - Create and Verify
+df = pd.read_csv("customer_clustering.csv")
+df.fillna(df.mean(), inplace= True)
+sc = StandardScaler()
+x= sc.fit_transform(df)
 
-1. Click Create instance and wait for Status to show Running.
-2. Click on the instance, go to Databases, click Create database.
-3. Name: app_database, click Create.
+link = linkage(x, method="single", metric="euclidean")
 
----
 
-# Exp:5 Launch a Compute Engine VM and Automate Apache Web Server Installation via Startup Script --->>>
 
-## Steps
+m1 = AgglomerativeClustering(n_clusters=2 , metric="euclidean", linkage="ward")
 
-### Step 1 - Create a VM Instance
+l = m1.fit_predict(x)
 
-1. Go to Compute Engine, then VM instances.
-2. Click Create Instance.
-3. Name: vm-apache-startup
-4. Region: us-central1, Zone: us-central1-a
-5. Series: E2, Machine type: e2-micro
-6. Boot disk: Debian GNU/Linux 11, size 10 GB.
-7. Under Firewall, check Allow HTTP traffic.
+silhouette_score(x, l )
 
-### Step 2 - Add Startup Script
 
-1. Expand Advanced options, then Management.
-2. In the Startup script field, enter:
 
-#! /bin/bash
-apt-get update
-apt-get install -y apache2
-systemctl start apache2
-systemctl enable apache2
-echo "<h1>Apache Server Running on $(hostname)</h1>" > /var/www/html/index.html
 
-### Step 3 - Create and Verify
+###fcmean
 
-1. Click Create and wait for the VM to start.
-2. Copy the External IP from the VM instances page.
-3. Open a browser and go to http://EXTERNAL_IP
-4. Confirm the Apache page loads.
 
----
 
-# Exp:6 Build an Instance Template and Deploy a Managed Instance Group with Autoscaling --->>>
+df = pd.read_csv("driverFCM.csv")
 
-## Steps
+df.fillna(df.mean(numeric_only=True), inplace=True)
 
-### Step 1 - Create an Instance Template
+X = df.select_dtypes(include=np.number).values
 
-1. Go to Compute Engine, then Instance templates.
-2. Click Create instance template.
-3. Name: web-server-template
-4. Series: E2, Machine type: e2-micro.
-5. Boot disk: Debian GNU/Linux 11, 10 GB.
-6. Firewall: check Allow HTTP traffic.
-7. Expand Advanced options, then Management. Add startup script:
+scaler = StandardScaler()
+X = scaler.fit_transform(X)
 
-#! /bin/bash
-apt-get update
-apt-get install -y apache2
-systemctl start apache2
-systemctl enable apache2
+plt.scatter(X[:,0], X[:,1])
+plt.title("Input Data Distribution")
+plt.show()
 
-8. Click Create.
+sil_scores = []
+models = []
 
-### Step 2 - Create a Managed Instance Group
+for k in range(2, 6):
+    
+    fcm = FCM(n_clusters=k, m=2, max_iter=150)
+    fcm.fit(X)
+    
+    labels = fcm.predict(X)
+    
+    sil = silhouette_score(X, labels)
+    
+    sil_scores.append(sil)
+    models.append(fcm)
 
-1. Go to Compute Engine, then Instance groups.
-2. Click Create instance group.
-3. Select New managed instance group (stateless).
-4. Name: web-server-mig
-5. Instance template: web-server-template
-6. Location: Single zone, Region: us-central1, Zone: us-central1-a
 
-### Step 3 - Configure Autoscaling
+plt.plot(range(2,6), sil_scores)
+plt.xlabel("Clusters")
+plt.ylabel("Silhouette Score")
+plt.show()
 
-1. Autoscaling mode: On: add and remove instances to the group.
-2. Signal: CPU utilization.
-3. Target CPU utilization: 60
-4. Minimum instances: 1
-5. Maximum instances: 4
-6. Initialization period: 60 seconds
+best_idx = np.argmax(sil_scores)
+best_model = models[best_idx]
 
-### Step 4 - Configure Health Check
+best_labels = best_model.predict(X)
 
-1. Click Create a health check.
-2. Name: http-health-check, Protocol: HTTP, Port: 80, Path: /
-3. Click Save and continue.
+plt.scatter(X[:,0], X[:,1], c=best_labels)
+plt.title("FCM Clusters")
+plt.show()
 
-### Step 5 - Create and Verify
+print("Centroids:\n", best_model.centers)
 
-1. Click Create and wait for the MIG to be ready.
-2. Click on the MIG, check the Members tab for running instances.
-3. Under Details tab, confirm autoscaling shows 60% CPU target.
 
----
 
-# Exp:7 Create a Test User in IAM and Assign Storage Object Viewer Role --->>>
+####som 
 
-## Steps
 
-### Step 1 - Grant Access at Bucket Level
 
-1. Go to Cloud Storage, then Buckets.
-2. Click on the target bucket.
-3. Click the Permissions tab.
-4. Click Grant access.
-5. New principals: enter the Test User email, for example: testuser@gmail.com
-6. Role: select Storage Object Viewer.
-7. Click Save.
+df = pd.read_csv("data.csv")
 
-### Step 2 - Verify in IAM
+# 2. Missing value imputation
+df.fillna(df.mean(numeric_only=True), inplace=True)
 
-1. Go to IAM and Admin, then IAM.
-2. Search for the Test User email.
-3. Confirm Storage Object Viewer role is listed for that user.
+# 3. Standardize
+X = df.select_dtypes(include=np.number).values
 
-### Step 3 - Verify Access as Test User
+scaler = StandardScaler()
+X = scaler.fit_transform(X)
 
-1. Log in with the Test User account.
-2. Go to Cloud Storage, then Buckets.
-3. Confirm the user can only access the specific bucket where the role was granted.
+# 5. Visualize 2 features
+plt.scatter(X[:,0], X[:,1])
+plt.title("Input Data")
+plt.show()
 
----
+sil_scores = []
+models = []
 
-# Exp:8 Create a Service Account with Compute Viewer Permissions and Attach It to a VM --->>>
+for k in range(2, 6):
 
-## Steps
+    som = MiniSom(x=k, y=1,
+                  input_len=X.shape[1],
+                  sigma=1.0,
+                  learning_rate=0.5)
 
-### Step 1 - Create a Service Account
+    som.random_weights_init(X)
+    som.train_random(X, 100)
 
-1. Go to IAM and Admin, then Service Accounts.
-2. Click Create Service Account.
-3. Name: compute-viewer-sa, click Create and Continue.
-4. Role: select Compute Viewer, click Continue, then Done.
+    labels = np.array([som.winner(x)[0] for x in X])
 
-### Step 2 - Create a VM and Attach the Service Account
+    sil = silhouette_score(X, labels)
 
-1. Go to Compute Engine, then VM instances.
-2. Click Create Instance.
-3. Name: vm-with-service-account
-4. Region: us-central1, Zone: us-central1-a, Machine type: e2-micro.
-5. Expand Advanced options, then Security.
-6. Under Service account, select compute-viewer-sa.
-7. Access scopes: Allow full access to all Cloud APIs.
-8. Click Create.
+    sil_scores.append(sil)
+    models.append((som, labels))
 
-### Step 3 - Verify
+    print("k =", k, "Silhouette =", sil)
 
-1. Click on the VM name.
-2. Confirm the Service account field shows compute-viewer-sa@PROJECT_ID.iam.gserviceaccount.com
-3. Click SSH on the VM.
-4. Run: gcloud compute instances list
-5. Confirm the command returns instance data, verifying read access works.
+)
+print("Centroids:\n", best_som.get_weights())
 
----
+plt.scatter(centroids[i, 0], centroids[i, 1], marker='X')
 
-# Exp:9 Create a Folder in Your Organization and Assign IAM Roles at the Folder Level --->>>
 
-## Steps
 
-### Step 1 - Create a Folder
+###rules
 
-1. Go to IAM and Admin, then Manage Resources.
-2. Select your Organization node from the hierarchy.
-3. Click Create Folder.
-4. Name: dev-folder
-5. Confirm Location is under the organization root.
-6. Click Create.
+df = pd.read_csv("Shop1.csv")
 
-### Step 2 - Assign an IAM Role at the Folder Level
+df = df.values.astype(str).tolist()
 
-1. Select the folder (dev-folder) in the hierarchy.
-2. Click the three-dot menu next to the folder, then Manage folder permissions.
-3. Click Grant Access.
-4. Enter the principal email address.
-5. Select a role, for example: Viewer or Editor.
-6. Click Save.
+te = TransactionEncoder()
+df_arr = te.fit(df).transform(df)
+df_bin= pd.DataFrame(df_arr, columns=te.columns_)
 
-### Step 3 - Create a Project Under the Folder
+feq = apriori(df_bin, min_support=0.02, use_colnames=True)
 
-1. On Manage Resources, click Create Project.
-2. Name: dev-project-01
-3. Under Location, select dev-folder.
-4. Click Create.
 
-### Step 4 - Verify Policy Inheritance
+rules = association_rules(feq, metric="confidence", min_threshold=0.5)
+rules
 
-1. Go to IAM and Admin, then IAM for the new project dev-project-01.
-2. Confirm the role assigned at the folder level appears in the project's IAM list with an inherited indicator.
-3. Attempt to remove the inherited role at the project level to confirm it is not editable there.
 
----
+##som
+som = MiniSom(x=k, y=1,
+                  input_len=X.shape[1],
+                  sigma=1.0,
+                  learning_rate=0.5)
 
-# Exp:10 Deploy an HTTP(S) Load Balancer and Configure a Cloud Armor Security Policy --->>>
+    som.random_weights_init(X)
+    som.train_random(X, 100)
 
-## Steps
+    labels = np.array([som.winner(x)[0] for x in X])
 
-### Step 1 - Create a Backend Instance Group
+    sil = silhouette_score(X, labels)
 
-1. Go to Compute Engine, then Instance templates.
-2. Create a template named lb-backend-template:
-   - Machine type: e2-micro, OS: Debian GNU/Linux 11
-   - Firewall: Allow HTTP traffic
-   - Startup script: apt-get update and apt-get install -y apache2
-3. Go to Compute Engine, then Instance groups.
-4. Click Create instance group, select New managed instance group (stateless).
-5. Name: lb-backend-mig, Template: lb-backend-template
-6. Region: us-central1, Zone: us-central1-a, Min: 1, Max: 2.
-7. Click Create.
+###random
+x= df[["SepalLengthCm","SepalWidthCm","PetalLengthCm"]].values
+sc = StandardScaler()
+x= sc.fit_transform(x)
 
-### Step 2 - Create a Load Balancer
+le = LabelEncoder()
+y = le.fit_transform(df["Species"])
 
-1. Go to Network services, then Load balancing.
-2. Click Create load balancer.
-3. Select Application Load Balancer (HTTP/HTTPS), click Start configuration.
-4. Select From Internet to my VMs (Public) and Global external Application Load Balancer.
-5. Click Continue.
-6. Name: http-load-balancer
+xt ,xtt, yt ,ytt = train_test_split(x,y , test_size=0.2)
 
-### Step 3 - Configure Frontend
+ran = RandomForestClassifier(n_estimators=50 , max_depth=3 )
+ran.fit(xt, yt)
+yred = ran.predict(xtt)
 
-1. Click Add Frontend IP and port.
-2. Name: lb-frontend, Protocol: HTTP, IP version: IPv4.
-3. Under IP address, click Create IP address, name it lb-static-ip, click Reserve.
-4. Port: 80, click Done.
+accuracy_score(yred, ytt)
 
-### Step 4 - Configure Backend
 
-1. Click Add backend, select Instance group.
-2. Instance group: lb-backend-mig, Port: 80.
-3. Balancing mode: Utilization, Maximum utilization: 80%.
-4. Create a health check: Name: http-health-check, Protocol: HTTP, Port: 80, Path: /
-5. Click Save, then Create.
+ad = AdaBoostClassifier(n_estimators=50 , learning_rate=0.01, )
+ad.fit(xt , yt)
+confusion_matrix(ad.predict(xtt), ytt)
 
-### Step 5 - Create the Load Balancer
 
-1. Leave default routing rules under Host and path rules.
-2. Click Create and wait for provisioning to complete.
-3. Copy the frontend IP and open http://LOAD_BALANCER_IP in a browser to confirm it works.
 
-### Step 6 - Create a Cloud Armor Security Policy
-
-1. Go to Network security, then Cloud Armor policies.
-2. Click Create policy.
-3. Name: lb-security-policy
-4. Policy type: Backend security policy.
-5. Default rule action: Allow.
-
-### Step 7 - Add a Deny Rule
-
-1. Click Add rule.
-2. Mode: Basic mode.
-3. Match: 192.0.2.0/24
-4. Action: Deny, Deny status: 403.
-5. Priority: 1000.
-6. Click Done, then Create policy.
-
-### Step 8 - Attach Policy to the Load Balancer Backend
-
-1. Click on lb-security-policy, then the Targets tab.
-2. Click Apply policy to target.
-3. Select the backend service of your load balancer.
-4. Click Add, then Save.
-
-### Step 9 - Verify
-
-1. Go to Network services, then Load balancing.
-2. Click on http-load-balancer, then the backend service link.
-3. Confirm lb-security-policy is listed under the Cloud Armor section.
-
----
